@@ -1,13 +1,25 @@
+import httpx
+import os
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-import uvicorn
 
 app = FastAPI()
 
-@app.post("/v1/broadcast")
-async def echo_payload(request: Request):
-    payload = await request.json()
-    print("Received payload:", payload)
-    return payload
+load_dotenv()
 
-# if __name__ == "__main__":
-#     uvicorn.run(app, host="127.0.0.1", port=8000)
+@app.post("/v1/broadcast")
+async def send_sms(request: Request):
+    data = await request.json()
+    payload = {
+        "recipient": data['recipient'],
+        "message": data['body']
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            f"{os.getenv('SMS_GATEWAY_URL')}/v1/broadcast",
+            headers={"x-api-key": os.getenv('SMS_GATEWAY_KEY')},
+            json=payload
+        )
+    message = {"status": response.status_code, "message": response.text}
+    print(message)
+    return message
